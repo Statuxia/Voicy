@@ -1,2 +1,5 @@
 # Project exclude paths
 /.gradle/
+/.idea/
+/build/
+/src/main/java/me/statuxia/utils/Config.java
