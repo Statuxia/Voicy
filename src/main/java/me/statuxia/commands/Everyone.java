@@ -12,7 +12,6 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 import java.awt.*;
-import java.sql.SQLException;
 import java.util.EnumSet;
 import java.util.Objects;
 
@@ -52,18 +51,10 @@ public class Everyone extends ListenerAdapter {
         Member member = event.getMember();
         EmbedBuilder embed = new EmbedBuilder();
 
-        if (event.getAuthor().isBot() || member == null)
+        if (event.getAuthor().isBot() || member == null || !event.isFromGuild())
             return;
 
         Message msg = event.getMessage();
-        if (!event.isFromGuild()) {
-            embed.setTitle("Something's wrong...");
-            embed.setDescription("The bot functions only on guilds.");
-            embed.setColor(Color.YELLOW);
-            msg.replyEmbeds(embed.build()).queue();
-            return;
-        }
-
         if (!Objects.requireNonNull(event.getGuild().getMember(Main.bot)).hasPermission(Permission.ADMINISTRATOR)) {
             embed.setTitle("Something's wrong...");
             embed.setDescription("I don't have [ADMINISTRATOR] permissions.");
@@ -92,87 +83,74 @@ public class Everyone extends ListenerAdapter {
             return;
         }
 
-        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice settings")) {
-            try {
-                UserInfo settings = MySQLConnector.getUserSettings(msg.getAuthor().getIdLong());
-                if (settings == null) {
-                    embed.setTitle("Voice Settings");
-                    embed.setDescription("I'm sorry, but you've never created a channel");
-                    embed.setColor(Color.GREEN);
-                    msg.replyEmbeds(embed.build()).queue();
-                    return;
-                }
-
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " settings")) {
+            MySQLConnector.getUserSettings(member.getIdLong());
+            UserInfo settings = UserInfo.get(member.getIdLong());
+            if (settings == null) {
                 embed.setTitle("Voice Settings");
-                embed.setDescription("**Voice User:** " + msg.getAuthor().getAsMention() + "\n" +
-                        "**Voice Name:** " + settings.NAME + "\n" +
-                        "**Voice Max Entry:** " + settings.MAX_ENTRY + "\n" +
-                        "**Voice Alloweds (IDS):** " + settings.ALLOWEDS + "\n" +
-                        "**Voice Denieds (IDS):** " + settings.DENIEDS
-                );
+                embed.setDescription("I'm sorry, but you've never created a channel");
                 embed.setColor(Color.GREEN);
                 msg.replyEmbeds(embed.build()).queue();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            return;
-        }
-
-        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice name")) {
-            try {
-                if (MySQLConnector.setName(msg.getAuthor().getIdLong(), msg.getContentRaw().substring(11))) {
-                    embed.setTitle("Voice Settings");
-                    embed.setDescription("Voice name successfully changed.");
-                    embed.setColor(Color.GREEN);
-                    msg.replyEmbeds(embed.build()).queue();
-                } else {
-                    embed.setTitle("Voice Settings");
-                    embed.setDescription("Sorry, but your voice name is wrong.");
-                    embed.setColor(Color.RED);
-                    msg.replyEmbeds(embed.build()).queue();
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            return;
-        }
-        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice limit")) {
-            try {
-                int limit = Integer.parseInt(msg.getContentRaw().substring(13).strip());
-                if (MySQLConnector.setMaxEntry(msg.getAuthor().getIdLong(), limit)) {
-                    embed.setTitle("Voice Settings");
-                    embed.setDescription("Voice limit successfully changed.");
-                    embed.setColor(Color.GREEN);
-                    msg.replyEmbeds(embed.build()).queue();
-                } else {
-                    embed.setTitle("Voice Settings");
-                    embed.setDescription("Sorry, but your limit input is wrong.");
-                    embed.setColor(Color.RED);
-                    msg.replyEmbeds(embed.build()).queue();
-                }
-            } catch (Exception e) {
                 return;
             }
-        }
-        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice reset")) {
-            try {
-                Voice.defaultSettings(member);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice clear")) {
-            try {
-                UserInfo info = MySQLConnector.getUserSettings(member.getIdLong());
-                if (info == null)
-                    return;
 
-                Voice.defaultSettings(member, info.NAME, info.MAX_ENTRY);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
+            embed.setTitle("Voice Settings");
+            embed.setDescription("**Voice User:** " + msg.getAuthor().getAsMention() + "\n" +
+                    "**Voice Name:** " + settings.getVoiceName() + "\n" +
+                    "**Voice Max Entry:** " + settings.getMaxEntry() + "\n" +
+                    "**Voice Alloweds (IDS):** " + settings.getAlloweds() + "\n" +
+                    "**Voice Denieds (IDS):** " + settings.getDenieds()
+            );
+            embed.setColor(Color.GREEN);
+            msg.replyEmbeds(embed.build()).queue();
+            return;
         }
-        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice private")) {
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " name")) {
+            if (MySQLConnector.setVoiceName(msg.getAuthor().getIdLong(), msg.getContentRaw().substring(11))) {
+                embed.setTitle("Voice Settings");
+                embed.setDescription("Voice name successfully changed.");
+                embed.setColor(Color.GREEN);
+                msg.replyEmbeds(embed.build()).queue();
+            } else {
+                embed.setTitle("Voice Settings");
+                embed.setDescription("Sorry, but your voice name is wrong.");
+                embed.setColor(Color.RED);
+                msg.replyEmbeds(embed.build()).queue();
+            }
+            return;
+        }
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " limit")) {
+            int limit = Integer.parseInt(msg.getContentRaw().substring(13).strip());
+            if (MySQLConnector.setMaxEntry(msg.getAuthor().getIdLong(), limit)) {
+                embed.setTitle("Voice Settings");
+                embed.setDescription("Voice limit successfully changed.");
+                embed.setColor(Color.GREEN);
+                msg.replyEmbeds(embed.build()).queue();
+            } else {
+                embed.setTitle("Voice Settings");
+                embed.setDescription("Sorry, but your limit input is wrong.");
+                embed.setColor(Color.RED);
+                msg.replyEmbeds(embed.build()).queue();
+            }
+            return;
+        }
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " reset")) {
+            Voice.defaultSettings(member);
+        }
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " clear")) {
+            MySQLConnector.getUserSettings(member.getIdLong());
+            UserInfo info = UserInfo.get(member.getIdLong());
+            if (info == null)
+                return;
+
+            Voice.defaultSettings(member, info.getVoiceName(), info.getMaxEntry());
+        }
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " private")) {
             GuildVoiceState a = member.getVoiceState();
             if (a == null)
                 return;
@@ -180,6 +158,7 @@ public class Everyone extends ListenerAdapter {
             VoiceChannel channel = a.getChannel();
             if (channel == null)
                 return;
+
             Role everyone = msg.getGuild().getPublicRole();
             channel.getManager().clearOverridesAdded()
                     .clearOverridesRemoved()
@@ -187,7 +166,8 @@ public class Everyone extends ListenerAdapter {
                     .putPermissionOverride(member, EnumSet.of(Permission.VIEW_CHANNEL), null)
                     .queue();
         }
-        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice lock")) {
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " lock")) {
             GuildVoiceState a = member.getVoiceState();
             if (a == null)
                 return;
@@ -195,13 +175,15 @@ public class Everyone extends ListenerAdapter {
             VoiceChannel channel = a.getChannel();
             if (channel == null)
                 return;
+
             Role everyone = msg.getGuild().getPublicRole();
             channel.getManager().clearOverridesAdded()
                     .putRolePermissionOverride(everyone.getIdLong(), null, EnumSet.of(Permission.VIEW_CHANNEL))
                     .putPermissionOverride(member, EnumSet.of(Permission.VIEW_CHANNEL), null)
                     .queue();
         }
-        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice unlock")) {
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " unlock")) {
             GuildVoiceState a = member.getVoiceState();
             if (a == null)
                 return;
@@ -209,6 +191,7 @@ public class Everyone extends ListenerAdapter {
             VoiceChannel channel = a.getChannel();
             if (channel == null)
                 return;
+
             Role everyone = msg.getGuild().getPublicRole();
             channel.getManager().clearOverridesAdded()
                     .putRolePermissionOverride(everyone.getIdLong(), EnumSet.of(Permission.VIEW_CHANNEL), null)

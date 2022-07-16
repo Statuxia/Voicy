@@ -13,7 +13,6 @@ import net.dv8tion.jda.api.events.guild.voice.GuildVoiceMoveEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -22,27 +21,35 @@ public class Voice extends ListenerAdapter {
 
     public static ArrayList<Long> createdChannels = new ArrayList<>();
 
+    public static void defaultSettings(Member member) {
+        MySQLConnector.setUserSettings(member.getIdLong(), member.getUser().getName(), 0, "", "");
+    }
+
+    public static void defaultSettings(Member member, String name, int maxEntry) {
+        MySQLConnector.setUserSettings(member.getIdLong(), name, maxEntry, "", "");
+    }
+
     public boolean onVoiceJoin(boolean isBot, long guildID, long channelID) {
-        if (isBot) return true;
-        try {
-            return MySQLConnector.isVoiceGenerator(guildID, channelID);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        if (isBot)
+            return true;
+
+        return MySQLConnector.isNotGenerator(guildID, channelID);
     }
 
     public boolean onVoiceLeave(boolean isBot, boolean isEmpty, long guildID, long channelID) {
-        if (isBot) return false;
-        if (!isEmpty) return false;
-        if (!createdChannels.contains(channelID)) return false;
-        try {
-            return MySQLConnector.isVoiceGenerator(guildID, channelID);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        if (isBot)
+            return false;
+
+        if (!isEmpty)
+            return false;
+
+        if (!createdChannels.contains(channelID))
+            return false;
+
+        return MySQLConnector.isNotGenerator(guildID, channelID);
     }
 
-    public void createVoice(Guild guild, Member member, Category category) throws SQLException {
+    public void createVoice(Guild guild, Member member, Category category) {
         String voiceName;
         int voiceLimit;
         ArrayList<String> voiceAllowedsIDS;
@@ -50,7 +57,8 @@ public class Voice extends ListenerAdapter {
         ArrayList<Member> voiceAlloweds;
         ArrayList<Member> voiceDenieds;
 
-        UserInfo settings = MySQLConnector.getUserSettings(member.getIdLong());
+        MySQLConnector.getUserSettings(member.getIdLong());
+        UserInfo settings = UserInfo.get(member.getIdLong());
 
         if (settings == null) {
             voiceName = member.getUser().getName();
@@ -59,51 +67,44 @@ public class Voice extends ListenerAdapter {
             voiceDeniedsIDS = null;
             defaultSettings(member);
         } else {
-            voiceName = settings.NAME;
-            voiceLimit = settings.MAX_ENTRY;
-            voiceAllowedsIDS = new ArrayList<>(Arrays.asList(settings.ALLOWEDS.split(" ")));
-            voiceDeniedsIDS = new ArrayList<>(Arrays.asList(settings.DENIEDS.split(" ")));
+            voiceName = settings.getVoiceName();
+            voiceLimit = settings.getMaxEntry();
+            voiceAllowedsIDS = new ArrayList<>(Arrays.asList(settings.getAlloweds().split(" ")));
+            voiceDeniedsIDS = new ArrayList<>(Arrays.asList(settings.getDenieds().split(" ")));
         }
         voiceAlloweds = Funcs.getMembers(guild, voiceAllowedsIDS);
         voiceDenieds = Funcs.getMembers(guild, voiceDeniedsIDS);
 
-        try {
-            guild.createVoiceChannel(voiceName)
-                    .setParent(category)
-                    .addPermissionOverride(member, EnumSet.of(Permission.VIEW_CHANNEL,
-                            Permission.MANAGE_CHANNEL, Permission.VOICE_CONNECT), null)
-                    .setUserlimit(voiceLimit).queue(voice -> {
-                        for (Member allowed : voiceAlloweds) {
-                            voice.getManager().putPermissionOverride(allowed,
-                                    EnumSet.of(Permission.VIEW_CHANNEL, Permission.VOICE_CONNECT), null).queue();
-                        }
-                        for (Member denied : voiceDenieds) {
-                            voice.getManager().putPermissionOverride(denied, null,
-                                    EnumSet.of(Permission.VIEW_CHANNEL, Permission.VOICE_CONNECT)).queue();
-                        }
-                        guild.moveVoiceMember(member, voice).queue();
-                        createdChannels.add(voice.getIdLong());
-                    });
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        guild.createVoiceChannel(voiceName)
+                .setParent(category)
+                .addPermissionOverride(member, EnumSet.of(Permission.VIEW_CHANNEL,
+                        Permission.MANAGE_CHANNEL, Permission.VOICE_CONNECT), null)
+                .setUserlimit(voiceLimit).queue(voice -> {
+                    for (Member allowed : voiceAlloweds) {
+                        voice.getManager().putPermissionOverride(allowed,
+                                EnumSet.of(Permission.VIEW_CHANNEL, Permission.VOICE_CONNECT), null).queue();
+                    }
+                    for (Member denied : voiceDenieds) {
+                        voice.getManager().putPermissionOverride(denied, null,
+                                EnumSet.of(Permission.VIEW_CHANNEL, Permission.VOICE_CONNECT)).queue();
+                    }
+                    guild.moveVoiceMember(member, voice).queue();
+                    createdChannels.add(voice.getIdLong());
+                });
     }
 
     @Override
-    public void onGuildVoiceJoin(@NotNull GuildVoiceJoinEvent event){
+    public void onGuildVoiceJoin(@NotNull GuildVoiceJoinEvent event) {
         boolean isBot = event.getMember().getUser().isBot();
         long guildID = event.getGuild().getIdLong();
         long channelID = event.getChannelJoined().getIdLong();
-        if (onVoiceJoin(isBot, guildID, channelID)) return;
+        if (onVoiceJoin(isBot, guildID, channelID))
+            return;
 
         Category category = event.getChannelJoined().getParent();
         Guild guild = event.getGuild();
         Member member = event.getMember();
-        try {
-            createVoice(guild, member, category);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        createVoice(guild, member, category);
     }
 
     @Override
@@ -112,7 +113,10 @@ public class Voice extends ListenerAdapter {
         boolean isEmpty = event.getChannelLeft().getMembers().isEmpty();
         long guildID = event.getGuild().getIdLong();
         long channelID = event.getChannelLeft().getIdLong();
-        if (onVoiceLeave(isBot, isEmpty, guildID, channelID)) event.getChannelLeft().delete().queue();
+        if (onVoiceLeave(isBot, isEmpty, guildID, channelID)) {
+            createdChannels.remove(channelID);
+            event.getChannelLeft().delete().queue();
+        }
     }
 
     @Override
@@ -122,28 +126,17 @@ public class Voice extends ListenerAdapter {
         long guildID = event.getGuild().getIdLong();
         long leftID = event.getChannelLeft().getIdLong();
         long joinID = event.getChannelJoined().getIdLong();
-        if (onVoiceLeave(isBot, isEmpty, guildID, leftID)) event.getChannelLeft().delete().queue();
-        if (onVoiceJoin(isBot, guildID, joinID)) return;
+        if (onVoiceLeave(isBot, isEmpty, guildID, leftID)) {
+            createdChannels.remove(leftID);
+            event.getChannelLeft().delete().queue();
+        }
+
+        if (onVoiceJoin(isBot, guildID, joinID))
+            return;
 
         Category category = event.getChannelJoined().getParent();
         Guild guild = event.getGuild();
         Member member = event.getMember();
-        try {
-            createVoice(guild, member, category);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static void defaultSettings(Member member) throws SQLException{
-        MySQLConnector.setUserSettings(member.getIdLong(), member.getUser().getName(), 0, "", "");
-    }
-
-    public static void defaultSettings(Member member, String name, int maxEntry) throws SQLException{
-        MySQLConnector.setUserSettings(member.getIdLong(), name, maxEntry, "", "");
-    }
-
-    public static void defaultSettings(Member member, String name, int maxEntry, String alloweds, String denieds) throws SQLException{
-        MySQLConnector.setUserSettings(member.getIdLong(), name, maxEntry, alloweds, denieds);
+        createVoice(guild, member, category);
     }
 }
