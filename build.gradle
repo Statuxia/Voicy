@@ -8,7 +8,7 @@ plugins {
 mainClassName = "me.statuxia.Main"
 
 group 'me.statuxia'
-version '0.1.4'
+version '0.1.5'
 
 repositories {
     mavenCentral()

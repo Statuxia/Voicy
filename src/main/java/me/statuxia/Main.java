@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 
 import javax.security.auth.login.LoginException;
 
@@ -25,6 +26,7 @@ public class Main extends ListenerAdapter {
         jda = JDABuilder.createDefault(Config.TOKEN)
                 .setActivity(Activity.watching(">help"))
                 .setStatus(OnlineStatus.ONLINE)
+                .enableIntents(GatewayIntent.GUILD_MEMBERS)
                 .addEventListeners(new Admin())
                 .addEventListeners(new Voice())
                 .addEventListeners(new Everyone())

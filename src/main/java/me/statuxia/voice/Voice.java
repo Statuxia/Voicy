@@ -69,8 +69,8 @@ public class Voice extends ListenerAdapter {
         } else {
             voiceName = settings.getVoiceName();
             voiceLimit = settings.getMaxEntry();
-            voiceAllowedsIDS = new ArrayList<>(Arrays.asList(settings.getAlloweds().split(" ")));
-            voiceDeniedsIDS = new ArrayList<>(Arrays.asList(settings.getDenieds().split(" ")));
+            voiceAllowedsIDS = new ArrayList<>(Arrays.asList(settings.getAlloweds().strip().split(" ")));
+            voiceDeniedsIDS = new ArrayList<>(Arrays.asList(settings.getDenieds().strip().split(" ")));
         }
         voiceAlloweds = Funcs.getMembers(guild, voiceAllowedsIDS);
         voiceDenieds = Funcs.getMembers(guild, voiceDeniedsIDS);
@@ -115,7 +115,7 @@ public class Voice extends ListenerAdapter {
         long channelID = event.getChannelLeft().getIdLong();
         if (onVoiceLeave(isBot, isEmpty, guildID, channelID)) {
             createdChannels.remove(channelID);
-            event.getChannelLeft().delete().queue();
+                event.getChannelLeft().delete().queue();
         }
     }
 

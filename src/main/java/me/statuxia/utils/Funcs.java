@@ -2,6 +2,7 @@ package me.statuxia.utils;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.requests.RestAction;
 
 import java.util.ArrayList;
 
@@ -15,14 +16,17 @@ public class Funcs {
         for (String id : IDS) {
             if (id.equals(" ") || id.equals(""))
                 continue;
-            try {
-                Member member = guild.getMemberById(id);
-                if (member == null)
-                    continue;
-                members.add(members.size(), member);
-            } catch (Exception ignored) {
-            }
+
+            RestAction<Member> member = guild.retrieveMemberById(id.strip());
+            member.queue(member1 -> members.add(members.size(), member1), member2 -> {
+            });
         }
         return members;
+    }
+
+    public static boolean isNotLong(String content) {
+
+        String trash = content.replaceAll("\\D", "");
+        return !trash.equals(content);
     }
 }

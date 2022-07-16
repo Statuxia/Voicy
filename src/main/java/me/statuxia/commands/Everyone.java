@@ -32,12 +32,6 @@ public class Everyone extends ListenerAdapter {
             > `>voice unlock` - make channel visible for you and allowed users.
             > `>voice allow {@user/id}` - allows the selected user to join.
             > `>voice deny {@user/id}` - prohibits the selected user from joining.
-            > `>voice invite {@user/id}` - sends a message to the user if he on the same server with bot.
-            > `>voice get` - transfers rights to the channel if there is no owner.
-            > `>voice promote {@user/id}` - promotes voice for user.
-            > `>voice update` - updates your voice by settings.
-            > `>voice clone {voice}` - clone voice settings.
-            > `>voice save` - save settings.
             :crown: **ADMIN COMMANDS**
             > `>voice create` - creates generator channel.
             > `>voice block {@user/id}` - blocks user to join channel.
@@ -139,6 +133,10 @@ public class Everyone extends ListenerAdapter {
 
         if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " reset")) {
             Voice.defaultSettings(member);
+            embed.setTitle("Voice Settings");
+            embed.setDescription("Voice settings dropped to default.");
+            embed.setColor(Color.GREEN);
+            msg.replyEmbeds(embed.build()).queue();
         }
 
         if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " clear")) {
@@ -148,6 +146,10 @@ public class Everyone extends ListenerAdapter {
                 return;
 
             Voice.defaultSettings(member, info.getVoiceName(), info.getMaxEntry());
+            embed.setTitle("Voice Settings");
+            embed.setDescription("Alloweds/Denieds users dropped to default.");
+            embed.setColor(Color.GREEN);
+            msg.replyEmbeds(embed.build()).queue();
         }
 
         if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " private")) {
@@ -197,22 +199,38 @@ public class Everyone extends ListenerAdapter {
                     .putRolePermissionOverride(everyone.getIdLong(), EnumSet.of(Permission.VIEW_CHANNEL), null)
                     .putPermissionOverride(member, EnumSet.of(Permission.VIEW_CHANNEL), null)
                     .queue();
+            return;
         }
-//        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice allow")) {
-//        }
-//        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice deny")) {
-//        }
-//        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice invite")) {
-//        }
-//        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice get")) {
-//        }
-//        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice promote")) {
-//        }
-//        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice update")) {
-//        }
-//        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice clone")) {
-//        }
-//        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX + "voice save")) {
-//        }
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " allow")) {
+            if (MySQLConnector.addAllowed(msg.getAuthor().getIdLong(), msg.getContentRaw().strip().
+                    substring(13).replaceAll("[<@!>]", ""))) {
+                embed.setTitle("Voice Settings");
+                embed.setDescription("User allowed to your voice channel.");
+                embed.setColor(Color.GREEN);
+                msg.replyEmbeds(embed.build()).queue();
+            } else {
+                embed.setTitle("Voice Settings");
+                embed.setDescription("Sorry, but user ID is wrong or you already allowed it.");
+                embed.setColor(Color.RED);
+                msg.replyEmbeds(embed.build()).queue();
+            }
+            return;
+        }
+
+        if (msg.getContentRaw().toLowerCase().startsWith(Config.PREFIX_VOICE + " deny")) {
+            if (MySQLConnector.addDenied(msg.getAuthor().getIdLong(), msg.getContentRaw().strip()
+                    .substring(12).replaceAll("[<@!>]", ""))) {
+                embed.setTitle("Voice Settings");
+                embed.setDescription("User denied to your voice channel.");
+                embed.setColor(Color.GREEN);
+                msg.replyEmbeds(embed.build()).queue();
+            } else {
+                embed.setTitle("Voice Settings");
+                embed.setDescription("Sorry, but user ID is wrong or you already denied it.");
+                embed.setColor(Color.RED);
+                msg.replyEmbeds(embed.build()).queue();
+            }
+        }
     }
 }

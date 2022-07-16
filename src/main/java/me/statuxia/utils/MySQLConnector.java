@@ -133,9 +133,50 @@ public class MySQLConnector {
 
         getUserSettings(memberID);
         UserInfo info = UserInfo.get(memberID);
-        if (info == null) return false;
+        if (info == null)
+            return false;
 
         setUserSettings(memberID, info.getVoiceName(), limit, info.getAlloweds(), info.getDenieds());
+        return true;
+    }
+
+    public static boolean addAllowed(long memberID, String allowedID) {
+        if (Funcs.isNotLong(allowedID))
+            return false;
+
+        getUserSettings(memberID);
+        UserInfo info = UserInfo.get(memberID);
+        if (info == null)
+            return false;
+
+        if (info.getAlloweds().contains(allowedID))
+            return false;
+
+        String denieds = info.getDenieds();
+        if (denieds.contains(allowedID))
+            denieds = denieds.replace(" " + allowedID, "");
+
+        setUserSettings(memberID, info.getVoiceName(), info.getMaxEntry(), info.getAlloweds() + " " + allowedID, denieds);
+        return true;
+    }
+
+    public static boolean addDenied(long memberID, String deniedID) {
+        if (Funcs.isNotLong(deniedID))
+            return false;
+
+        getUserSettings(memberID);
+        UserInfo info = UserInfo.get(memberID);
+        if (info == null)
+            return false;
+
+        if (info.getDenieds().contains(deniedID))
+            return false;
+
+        String alloweds = info.getAlloweds();
+        if (alloweds.contains(deniedID))
+            alloweds = alloweds.replace(" " + deniedID, "");
+
+        setUserSettings(memberID, info.getVoiceName(), info.getMaxEntry(), alloweds, info.getDenieds() + " " + deniedID);
         return true;
     }
 }
