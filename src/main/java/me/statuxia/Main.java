@@ -1,7 +1,9 @@
 package me.statuxia;
 
 import me.statuxia.commands.Admin;
+import me.statuxia.commands.Everyone;
 import me.statuxia.utils.Config;
+import me.statuxia.voice.Voice;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -24,6 +26,8 @@ public class Main extends ListenerAdapter {
                 .setActivity(Activity.watching(">help"))
                 .setStatus(OnlineStatus.ONLINE)
                 .addEventListeners(new Admin())
+                .addEventListeners(new Voice())
+                .addEventListeners(new Everyone())
                 .build();
         bot = jda.getSelfUser();
     }
